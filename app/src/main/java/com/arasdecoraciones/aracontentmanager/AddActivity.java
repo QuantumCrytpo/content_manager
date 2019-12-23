@@ -29,6 +29,7 @@ import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPReply;
 import org.apache.commons.net.ftp.FTPSClient;
 
+import com.arasdecoraciones.aracontentmanager.util.RequestHandler;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
@@ -49,6 +50,7 @@ import java.util.Map;
 public class AddActivity extends AppCompatActivity{
 
     private final int REQUEST_IMG_CODE = 202;
+    private RequestHandler handler;
     private int currState = 0;
     private Button nxtBnt;
     private Button chooseButton;
@@ -75,7 +77,7 @@ public class AddActivity extends AppCompatActivity{
         nxtBnt.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                nextState();
+                changeState();
             }
         });
 
@@ -91,15 +93,26 @@ public class AddActivity extends AppCompatActivity{
         uploadBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                uploadImage();
+                //uploadImage();
+                changeState();
             }
         });
+
+        handler = new RequestHandler();
 
         database = FirebaseFirestore.getInstance();
 
         setCategories();
     }
 
+    /*
+     * Description: Sets the spinner for selection category and option.
+     *              Categories are fixed, while the options are fetched from
+     *              the database.
+     * 
+     * @Param: None
+     * @return: void
+     */
     private void setCategories(){
         String[] cats = new String[]{"Arreglos", "Decoraciones", "Postres"};
 
@@ -176,102 +189,58 @@ public class AddActivity extends AppCompatActivity{
     }
 
 
-    private void nextState(){
+    private void changeState(){
         if(currState == 0){
-            LinearLayout state0 = findViewById(R.id.stateOneLayout);
-            state0.setVisibility(View.GONE);
-            LinearLayout state1 =  findViewById(R.id.stateTwoLayout);
-            state1.setVisibility(View.VISIBLE);
-            validateInput();
+            int validationCode = validateInput();
+            if(validationCode == 0) {
+                LinearLayout state0 = findViewById(R.id.stateOneLayout);
+                state0.setVisibility(View.GONE);
+                LinearLayout state1 = findViewById(R.id.stateTwoLayout);
+                state1.setVisibility(View.VISIBLE);
+                this.currState += 1;
+            }
+        } else if(currState == 1){
+            Log.d("DB", "CALLING UPLOAD");
+            handler.uploadNewItem(inputStream);
         }
     }
 
-    private boolean validateInput(){
-
-        newDoc = new HashMap<>();
-
+    /*
+     *
+     *
+     */
+    private int validateInput(){
         EditText title = findViewById(R.id.titleInput);
         String titleIn = title.getText().toString();
 
         Spinner sp = findViewById(R.id.catSpinner);
-        String cat = sp.getSelectedItem().toString().toLowerCase();
-        newDoc.put("category", cat);
-        newDoc.put("title", title.getText().toString());
+        String categorySelected = sp.getSelectedItem().toString().toLowerCase();
 
-        DocumentReference documentReference = database.collection("categorias")
-                .document(cat);
-        documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
-            @Override
-            public void onSuccess(DocumentSnapshot documentSnapshot) {
-                long count =(long) documentSnapshot.getData().get("count");
-                String curr = "";
-                int itemId = 0;
-                String opt = "";
-                Spinner optsSp  = findViewById(R.id.optnsSpinner);
-                String optSelected = optsSp.getSelectedItem().toString();
-                if(newDoc.get("category").equals("arreglos")){
-                    curr = "arreglos-";
-                    itemId = 2000 + (int)count;
-                    opt = (String) arreglosOptions.get(optSelected);
-                }
-                else if (newDoc.get("category").equals("decoraciones")){
-                    curr = "deco-";
-                    itemId = 1000 + (int)count;
-                    opt = (String) decoOptions.get(optSelected);
-                }
-                else if(newDoc.get("category").equals("postres")){
-                    curr = "postre-";
-                    itemId = 3000 + (int)count;
-                    opt = (String) postreOptions.get(optSelected);
-                }
+        EditText desText = findViewById(R.id.desInput);
+        String description = desText.getText().toString();
 
-                if(count < 10){curr = curr + "00" + count;}
-                else if(9 < count && count < 100){curr = curr + "0" + count;}
-                else if(99 < count){ curr = curr + count;}
+        Spinner optsSp  = findViewById(R.id.optnsSpinner);
+        String optSelected = optsSp.getSelectedItem().toString();
+        String optCode;
 
-                newDoc.put("itemID",Integer.toString(itemId));
-                newDoc.put("imgSrc", curr);
-                newDoc.put("opciones", Arrays.asList(opt));
+        if(categorySelected.equals("arreglos")){
+            optCode = (String) arreglosOptions.get(optSelected);
+        } else if(categorySelected.equals("decoraciones")){
+            optCode = (String) decoOptions.get(optSelected);
+        } else {
+            optCode = (String) postreOptions.get(optSelected);
+        }
 
-                Log.v("DDDD1111", curr + "-----opts: " + opt);
-                addToFirestore(newDoc);
-            }
-        });
 
-        return true;
+        int validateCode = handler.validateInput(categorySelected, titleIn, optCode, description);
+        if(validateCode == 1){
+            //SHOW WHATEVER IS MISSING
+        }
 
+        return validateCode;
     }
 
-    private void addToFirestore(final Map<String, Object> newDocument){
-        Log.v("DOC", "DOC: "  + newDocument.get("imgSrc") + ".." + newDocument.get("title"));
-        database.collection("categorias")
-                .document((String) newDocument.get("category"))
-                .collection("tile-info")
-                .document((String) newDoc.get("imgSrc"))
-                .set(newDoc)
-                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void aVoid) {
-                        Log.v("FSDB", "DATA ADDED: " + newDocument.get("title"));
-                    }
-                });
 
-        EditText description = findViewById(R.id.desInput);
-        newDoc.put("des", description.getText().toString());
-        newDoc.remove("opciones");
-
-        database.collection("categorias")
-                .document((String) newDocument.get("category"))
-                .collection("item-info")
-                .document((String) newDoc.get("imgSrc"))
-                .set(newDoc)
-                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void aVoid) {
-                        Log.v("FSDB", "DATA ADDED!");
-                    }
-                });
-    }
 
 
     //State Two Methods
@@ -315,35 +284,4 @@ public class AddActivity extends AppCompatActivity{
         }
     }
 
-    private void uploadImage() {
-        try {
-            FTPSClient ftp = new FTPSClient();
-            // FTP LOGIN INFO
-
-
-            ftp.enterLocalPassiveMode();
-            ftp.setFileType(FTP.BINARY_FILE_TYPE);
-            int reply = ftp.getReplyCode();
-            if (!FTPReply.isPositiveCompletion(reply)) {
-                ftp.disconnect();
-                Log.v("FTP", "FTP refused to connect");
-
-                System.exit(1);
-            } else {
-                Spinner sp = findViewById(R.id.catSpinner);
-                String cat = "decoraciones";// sp.getSelectedItem().toString().toLowerCase();
-
-                EditText title = findViewById(R.id.titleInput);
-                String titleIn = title.getText().toString();
-                Log.d("DOC", "CAT: " + cat  + "::T:" + titleIn);
-                //ftp.cwd("")
-
-
-
-                ftp.storeFile("PIC.png", inputStream);
-            }
-        } catch (IOException e){
-            Log.d("FTP", "FAILED TO UPLOAD");
-        }
-    }
 }
