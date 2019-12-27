@@ -24,33 +24,22 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 
-
-import org.apache.commons.net.ftp.FTP;
-import org.apache.commons.net.ftp.FTPReply;
-import org.apache.commons.net.ftp.FTPSClient;
-
 import com.arasdecoraciones.aracontentmanager.util.RequestHandler;
 import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.CollectionReference;
-import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 public class AddActivity extends AppCompatActivity{
 
     private final int REQUEST_IMG_CODE = 202;
-    private RequestHandler handler;
     private int currState = 0;
     private Button nxtBnt;
     private Button chooseButton;
@@ -65,7 +54,7 @@ public class AddActivity extends AppCompatActivity{
     private FirebaseFirestore database;
     private boolean spinnerInitialized;
     private ImageView imgView;
-    private static FTPSClient ftp;
+    private String[] inputArray;
     private ByteArrayInputStream inputStream;
 
     @Override
@@ -97,9 +86,6 @@ public class AddActivity extends AppCompatActivity{
                 changeState();
             }
         });
-
-        handler = new RequestHandler();
-
         database = FirebaseFirestore.getInstance();
 
         setCategories();
@@ -201,7 +187,9 @@ public class AddActivity extends AppCompatActivity{
             }
         } else if(currState == 1){
             Log.d("DB", "CALLING UPLOAD");
-            handler.uploadNewItem(inputStream);
+            RequestHandler handler = new RequestHandler(this.inputStream, inputArray);
+            Thread t1 = new Thread(handler);
+            t1.start();
         }
     }
 
@@ -231,13 +219,9 @@ public class AddActivity extends AppCompatActivity{
             optCode = (String) postreOptions.get(optSelected);
         }
 
+        this.inputArray = new String[]{categorySelected, titleIn, optCode, description};
 
-        int validateCode = handler.validateInput(categorySelected, titleIn, optCode, description);
-        if(validateCode == 1){
-            //SHOW WHATEVER IS MISSING
-        }
-
-        return validateCode;
+        return 0;
     }
 
 
@@ -269,7 +253,7 @@ public class AddActivity extends AppCompatActivity{
             imgView.setImageBitmap(bitmap);
 
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.PNG, 0, bos);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
             byte[] bitemap = bos.toByteArray();
             inputStream = new ByteArrayInputStream(bitemap);
         }

@@ -20,30 +20,33 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public class RequestHandler {
+public class RequestHandler implements Runnable {
 
     private FirebaseFirestore database;
     private static Map<String, Object> newDoc;
-    private String itemDes;
+    private String[] newDocInfo;
+    private ByteArrayInputStream imageInputStream;
 
-    public RequestHandler(){
+    public RequestHandler(ByteArrayInputStream inputStream, String... newDocument) {
+        this.newDocInfo = newDocument;
+        this.imageInputStream = inputStream;
         database = FirebaseFirestore.getInstance();
     }
-    /*
-     * Description: Checks if input is valid and saves for uploading later.
-     *
-     *
-     */
-    public int validateInput(final String category, String title, final String option, String des){
 
+    public void uploadNewItem(ByteArrayInputStream inputStream){
+        addToFirestore();
+        uploadImage(inputStream);
+        Log.d("UPL", "UPLOAD COMPLETED");
+    }
+
+    private void addToFirestore(){
         final Map<String, Object> newMap = new HashMap<>();
-        itemDes = des;
-        newMap.put("category", category);
-        newMap.put("title", title);
+        newMap.put("category", this.newDocInfo[0]);
+        newMap.put("title", this.newDocInfo[1]);
 
-        Log.d("DB", "In validateInput: category - " + category);
+        Log.d("DB", "In addFirestore: category - " + this.newDocInfo[0]);
         DocumentReference documentReference = database.collection("categorias")
-                .document(category);
+                .document(this.newDocInfo[0]);
         documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
             @Override
             public void onSuccess(DocumentSnapshot documentSnapshot) {
@@ -51,10 +54,10 @@ public class RequestHandler {
                 String curr;
                 int itemId;
 
-                if (category.equals("arreglos")) {
+                if (newDocInfo[0].equals("arreglos")) {
                     curr = "arreglos-";
                     itemId = 2000 + (int) count;
-                } else if (category.equals("decoraciones")) {
+                } else if (newDocInfo[0].equals("decoraciones")) {
                     curr = "deco-";
                     itemId = 1000 + (int) count;
                 } else {
@@ -72,48 +75,41 @@ public class RequestHandler {
 
                 newMap.put("itemID", Integer.toString(itemId));
                 newMap.put("imgSrc", curr);
-                newMap.put("opciones", Arrays.asList(option));
+                newMap.put("opciones", Arrays.asList(newDocInfo[2]));
 
                 newDoc = newMap;
+
+                database.collection("categorias")
+                        .document((String) newDoc.get("category"))
+                        .collection("tile-info")
+                        .document((String) newDoc.get("imgSrc"))
+                        .set(newDoc)
+                        .addOnSuccessListener(new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                Log.v("FSDB", "DATA ADDED: " + newDoc.get("title"));
+                            }
+                        });
+
+                newDoc.put("des", newDocInfo[3]);
+                newDoc.remove("opciones");
+
+                database.collection("categorias")
+                        .document((String) newDoc.get("category"))
+                        .collection("item-info")
+                        .document(newDoc.get("imgSrc") + ".jpg")
+                        .set(newDoc)
+                        .addOnSuccessListener(new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                Log.v("FSDB", "DATA ADDED!");
+                            }
+                        });
+
+                database.collection("categorias").document((String) newDoc.get("category"))
+                        .update("count", ++count);
             }
         });
-
-        return 0;
-    }
-
-    public void uploadNewItem(ByteArrayInputStream inputStream){
-        addToFirestore();
-        uploadImage(inputStream);
-        Log.d("UPL", "UPLOAD COMPLETED");
-    }
-
-    private void addToFirestore(){
-        database.collection("categorias")
-                .document((String) newDoc.get("category"))
-                .collection("tile-info")
-                .document((String) newDoc.get("imgSrc"))
-                .set(newDoc)
-                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void aVoid) {
-                        Log.v("FSDB", "DATA ADDED: " + newDoc.get("title"));
-                    }
-                });
-
-        newDoc.put("des", itemDes);
-        newDoc.remove("opciones");
-
-        database.collection("categorias")
-                .document((String) newDoc.get("category"))
-                .collection("item-info")
-                .document((String) newDoc.get("imgSrc"))
-                .set(newDoc)
-                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void aVoid) {
-                        Log.v("FSDB", "DATA ADDED!");
-                    }
-                });
     }
 
     private void uploadImage(ByteArrayInputStream imageStream){
@@ -121,8 +117,6 @@ public class RequestHandler {
             FTPSClient ftp = new FTPSClient();
 
             Log.d("FTP", "Connecting...");
-            ftp.connect("ftp.arasdecoraciones.com", 21);
-            ftp.login("mediaupload@arasdecoraciones.com", "btkzsat2?");
 
 
             ftp.enterLocalPassiveMode();
@@ -138,7 +132,7 @@ public class RequestHandler {
                 if (true){//ftp.changeWorkingDirectory("images/" +  + "/")) {
                     Log.d("FTP", "Attempting to change directory: " + (String) newDoc.get("category"));
                     ftp.cwd("images/" + (String) newDoc.get("category"));
-                    ftp.storeFile((String) newDoc.get("imgSrc") + ".png", imageStream);
+                    ftp.storeFile((String) newDoc.get("imgSrc") + ".jpg", imageStream);
                     Log.d("FTP", "Uploaded: " + (String) newDoc.get("imgSrc") + ".png");
                 } else {
                     Log.d("FTP", "COULD NOT CHANGE DIRECTORY");
@@ -148,5 +142,10 @@ public class RequestHandler {
             e.printStackTrace();
         }
 
+    }
+
+    @Override
+    public void run() {
+        uploadNewItem(this.imageInputStream);
     }
 }
