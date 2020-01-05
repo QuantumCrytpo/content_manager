@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/background"
     tools:context=".AddActivity">
 
     <TextView
@@ -24,75 +25,19 @@
 
     <Button
         android:id="@+id/nextButton"
+        android:background="@drawable/all_buttons"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="7dp"
-        android:layout_marginEnd="100dp"
-        android:layout_marginBottom="25dp"
+        android:layout_marginEnd="68dp"
+        android:layout_marginBottom="64dp"
         android:text="Siguiente"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/backButton" />
-
-    <Button
-        android:id="@+id/backButton"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="100dp"
-        android:layout_marginEnd="7dp"
-        android:layout_marginBottom="25dp"
-        android:text="Atras"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/nextButton"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <LinearLayout
-        android:id="@+id/stateTwoLayout"
-        android:layout_width="400dp"
-        android:layout_height="854dp"
-        android:layout_marginStart="1dp"
-        android:layout_marginEnd="1dp"
-        android:layout_marginBottom="6dp"
-        android:orientation="vertical"
-        android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@+id/nextButton"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView2"
-        app:layout_constraintVertical_bias="0.169">
-
-        <ImageView
-            android:id="@+id/imageView"
-            android:layout_width="271dp"
-            android:layout_height="236dp"
-            android:layout_marginStart="70dp"
-            android:layout_marginTop="55dp"
-            android:layout_marginEnd="70dp"
-            app:srcCompat="@android:color/holo_purple" />
-
-        <Button
-            android:id="@+id/chooseButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="30dp"
-            android:layout_marginTop="20dp"
-            android:text="Eligir Imagen" />
-
-        <Button
-            android:id="@+id/uploadButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="200dp"
-            android:layout_marginTop="-48dp"
-            android:text="Subir Image" />
-
-    </LinearLayout>
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <LinearLayout
         android:id="@+id/stateOneLayout"
-        android:layout_width="413dp"
-        android:layout_height="550dp"
+        android:layout_width="418dp"
+        android:layout_height="482dp"
         android:layout_marginTop="20dp"
         android:layout_marginBottom="30dp"
         android:orientation="vertical"
@@ -100,7 +45,7 @@
         app:layout_constraintBottom_toTopOf="@+id/nextButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@id/textView2">
+        app:layout_constraintTop_toBottomOf="@+id/textView2">
 
 
         <!-- First State -->
@@ -130,8 +75,8 @@
             android:layout_marginEnd="99dp"
             android:layout_marginBottom="6dp"
             android:ems="10"
+            android:hint="Titulo"
             android:inputType="textPersonName"
-            android:text="Titulo"
             app:layout_constraintBottom_toTopOf="@+id/textView4"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -156,7 +101,7 @@
 
         <Spinner
             android:id="@+id/catSpinner"
-            android:layout_width="208dp"
+            android:layout_width="210dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="99dp"
             android:layout_marginTop="6dp"
@@ -170,7 +115,7 @@
         <TextView
             android:id="@+id/textView8"
             android:layout_width="135dp"
-            android:layout_height="28dp"
+            android:layout_height="wrap_content"
             android:layout_marginStart="99dp"
             android:layout_marginTop="6dp"
             android:layout_marginEnd="250dp"
@@ -220,9 +165,92 @@
             android:inputType="textMultiLine" />
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/stateTwoLayout"
+        android:layout_width="408dp"
+        android:layout_height="432dp"
+        android:layout_marginStart="1dp"
+        android:layout_marginEnd="1dp"
+        android:layout_marginBottom="6dp"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/nextButton"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView2"
+        app:layout_constraintVertical_bias="0.169">
+
+        <ImageView
+            android:id="@+id/imageView"
+            android:layout_width="271dp"
+            android:layout_height="236dp"
+            android:layout_marginStart="70dp"
+            android:layout_marginTop="55dp"
+            android:layout_marginEnd="70dp"
+            android:contentDescription="Image to Upload"
+            app:srcCompat="@color/buttons" />
+
+        <Button
+            android:id="@+id/chooseButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_margin="20dp"
+            android:text="Eligir Imagen" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/stateThreeLayout"
+        android:layout_width="410dp"
+        android:layout_height="271dp"
+        android:layout_marginTop="150dp"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.009">
+
+        <TextView
+            android:id="@+id/finalWaitMsg"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:text="Subiendo..."
+            android:textAlignment="center"
+            android:textSize="24sp" />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+            android:layout_width="333dp"
+            android:layout_height="83dp"
+            android:layout_gravity="center_horizontal"
+            android:progressBackgroundTint="#E91E63"
+            android:progressTint="#000000"
+            android:visibility="visible" />
+
+        <Button
+            android:id="@+id/newOneBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_margin="15dp"
+            android:text="Agregra otro" />
+
+        <Button
+            android:id="@+id/goHomeBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="Ir Inicio" />
+    </LinearLayout>
 
 
-<!--     Second State-->
+    <!--     Second State-->
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

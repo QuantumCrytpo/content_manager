@@ -1,6 +1,8 @@
 package com.arasdecoraciones.aracontentmanager.util;
 
+import android.os.AsyncTask;
 import android.util.Log;
+
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -9,7 +11,6 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPReply;
 import org.apache.commons.net.ftp.FTPSClient;
-import org.apache.commons.net.io.CopyStreamAdapter;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -17,35 +18,39 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public class RequestHandler implements Runnable {
+public class DatabaseHandler extends AsyncTask<Object, Integer, String> {
 
     private FirebaseFirestore database;
-    private static Map<String, Object> newDoc;
-    private String[] newDocInfo;
-    private ByteArrayInputStream imageInputStream;
-    private CopyStreamAdapter streamListener;
+    private Map<String, Object> newItem;
 
-    public RequestHandler(ByteArrayInputStream inputStream, CopyStreamAdapter listener, String... newDocument) {
-        this.newDocInfo = newDocument;
-        this.imageInputStream = inputStream;
-        this.streamListener = listener;
+    @Override
+    protected void onPreExecute(){
+        super.onPreExecute();
         database = FirebaseFirestore.getInstance();
     }
 
-    public void uploadNewItem(ByteArrayInputStream inputStream){
-        addToFirestore();
+    @Override
+    protected String doInBackground(Object... params){
+        uploadNewItem((ByteArrayInputStream) params[0], (String[]) params[1]);
+        return null;
+    }
+
+
+
+    public void uploadNewItem(ByteArrayInputStream inputStream, String... newDoc){
+        addToFirestore(newDoc);
         uploadImage(inputStream);
         Log.d("UPL", "UPLOAD COMPLETED");
     }
 
-    private void addToFirestore(){
+    private void addToFirestore(final String... newDoc){
         final Map<String, Object> newMap = new HashMap<>();
-        newMap.put("category", this.newDocInfo[0]);
-        newMap.put("title", this.newDocInfo[1]);
+        newMap.put("category", newDoc[0]);
+        newMap.put("title", newDoc[1]);
 
-        Log.d("DB", "In addFirestore: category - " + this.newDocInfo[0]);
+        Log.d("DB", "In addFirestore: category - " + newDoc[0]);
         DocumentReference documentReference = database.collection("categorias")
-                .document(this.newDocInfo[0]);
+                .document(newDoc[0]);
         documentReference.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
             @Override
             public void onSuccess(DocumentSnapshot documentSnapshot) {
@@ -53,10 +58,10 @@ public class RequestHandler implements Runnable {
                 String curr;
                 int itemId;
 
-                if (newDocInfo[0].equals("arreglos")) {
+                if (newDoc[0].equals("arreglos")) {
                     curr = "arreglos-";
                     itemId = 2000 + (int) count;
-                } else if (newDocInfo[0].equals("decoraciones")) {
+                } else if (newDoc[0].equals("decoraciones")) {
                     curr = "deco-";
                     itemId = 1000 + (int) count;
                 } else {
@@ -74,32 +79,32 @@ public class RequestHandler implements Runnable {
 
                 newMap.put("itemID", Integer.toString(itemId));
                 newMap.put("imgSrc", curr);
-                newMap.put("opciones", Arrays.asList(newDocInfo[2]));
+                newMap.put("opciones", Arrays.asList(newDoc[2]));
 
-                newDoc = newMap;
+                newItem = newMap;
 
                 database.collection("categorias")
-                        .document((String) newDoc.get("category"))
+                        .document((String) newItem.get("category"))
                         .collection("tile-info")
-                        .document((String) newDoc.get("imgSrc"))
-                        .set(newDoc)
+                        .document((String) newItem.get("imgSrc"))
+                        .set(newItem)
                         .addOnSuccessListener(new OnSuccessListener<Void>() {
                             @Override
                             public void onSuccess(Void aVoid) {
-                                Log.v("FSDB", "DATA ADDED: " + newDoc.get("title"));
+                                Log.v("FSDB", "DATA ADDED: " + newItem.get("title"));
                             }
                         });
 
-                String docID = (String) newDoc.get("imgSrc");
-                newDoc.put("des", newDocInfo[3]);
-                newDoc.put("imgSrc", curr + ".jpg");
-                newDoc.remove("opciones");
+                newItem.put("des", newDoc[3]);
+                String imgSrcForItem = newItem.get("imgSrc") + ".jpg";
+                newItem.put("imgSrc", imgSrcForItem);
+                newItem.remove("opciones");
 
                 database.collection("categorias")
-                        .document((String) newDoc.get("category"))
+                        .document((String) newItem.get("category"))
                         .collection("item-info")
-                        .document(docID)
-                        .set(newDoc)
+                        .document((String) newItem.get("imgSrc"))
+                        .set(newItem)
                         .addOnSuccessListener(new OnSuccessListener<Void>() {
                             @Override
                             public void onSuccess(Void aVoid) {
@@ -107,8 +112,8 @@ public class RequestHandler implements Runnable {
                             }
                         });
 
-                //database.collection("categorias").document((String) newDoc.get("category"))
-                //        .update("count", ++count);
+                //database.collection("categorias").document((String) newItem.get("category"))
+                  //      .update("count", ++count);
             }
         });
     }
@@ -119,24 +124,24 @@ public class RequestHandler implements Runnable {
 
             Log.d("FTP", "Connecting...");
 
+            ftp.connect("ftp.arasdecoraciones.com");
+            ftp.login("mediaupload@arasdecoraciones.com", "btkzsat2?");
 
             ftp.enterLocalPassiveMode();
             ftp.setFileType(FTP.BINARY_FILE_TYPE);
-            ftp.setCopyStreamListener(streamListener);
 
             int replyCode = ftp.getReplyCode();
             if (!FTPReply.isPositiveCompletion(replyCode)) {
                 ftp.disconnect();
-                Log.d("FTP", "FTP refused to connect");
+                Log.v("FTP", "FTP refused to connect");
 
                 System.exit(1);
             } else {
                 if (true){//ftp.changeWorkingDirectory("images/" +  + "/")) {
-                    Log.d("FTP", "Attempting to change directory: " + (String) newDoc.get("category"));
-                    ftp.cwd("images/" + (String) newDoc.get("category"));
-                    String imageName = (String) newDoc.get("imgSrc");
-                    ftp.storeFile(imageName, imageStream);
-                    Log.d("FTP", "Uploaded: " + imageName);
+                    Log.d("FTP", "Attempting to change directory: " + (String) newItem.get("category"));
+                    ftp.cwd("images/" + (String) newItem.get("category"));
+                    ftp.storeFile((String) newItem.get("imgSrc") + ".jpg", imageStream);
+                    Log.d("FTP", "Uploaded: " + (String) newItem.get("imgSrc") + ".png");
                 } else {
                     Log.d("FTP", "COULD NOT CHANGE DIRECTORY");
                 }
@@ -145,10 +150,5 @@ public class RequestHandler implements Runnable {
             e.printStackTrace();
         }
 
-    }
-
-    @Override
-    public void run() {
-        uploadNewItem(this.imageInputStream);
     }
 }

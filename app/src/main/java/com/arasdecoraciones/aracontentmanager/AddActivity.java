@@ -13,6 +13,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
@@ -22,7 +23,9 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.Spinner;
+import android.widget.TextView;
 
 import com.arasdecoraciones.aracontentmanager.util.RequestHandler;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -31,6 +34,8 @@ import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
+
+import org.apache.commons.net.io.CopyStreamAdapter;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -41,29 +46,28 @@ public class AddActivity extends AppCompatActivity{
 
     private final int REQUEST_IMG_CODE = 202;
     private int currState = 0;
-    private Button nxtBnt;
-    private Button chooseButton;
-    private Button uploadBtn;
+    private Button nextButtton, chooseButton, goHomeBtn, newOneBtn;
     private Map<String, Object> newDoc;
     private Map<String, Object> arreglosOptions;
     private Map<String, Object> decoOptions;
     private Map<String, Object> postreOptions;
-    private String[] arreglosArray;
-    private String[] decoArray;
-    private String[] postresArray;
+    private String[] arreglosArray, decoArray, postresArray;
     private FirebaseFirestore database;
     private boolean spinnerInitialized;
     private ImageView imgView;
     private String[] inputArray;
     private ByteArrayInputStream inputStream;
+    private ProgressBar progressBar;
+    private int transferSize;
+    private Handler hl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add);
         spinnerInitialized = false;
-        nxtBnt = findViewById(R.id.nextButton);
-        nxtBnt.setOnClickListener(new View.OnClickListener() {
+        nextButtton = findViewById(R.id.nextButton);
+        nextButtton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 changeState();
@@ -78,14 +82,26 @@ public class AddActivity extends AppCompatActivity{
             }
         });
 
-        uploadBtn = findViewById(R.id.uploadButton);
-        uploadBtn.setOnClickListener(new View.OnClickListener() {
+        progressBar = findViewById(R.id.progressBar);
+
+        goHomeBtn = findViewById(R.id.goHomeBtn);
+        goHomeBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //uploadImage();
-                changeState();
+                returnHome();
             }
         });
+
+        newOneBtn = findViewById(R.id.newOneBtn);
+        newOneBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(getApplicationContext(), AddActivity.class);
+                finish();
+                startActivity(i);
+            }
+        });
+
         database = FirebaseFirestore.getInstance();
 
         setCategories();
@@ -174,7 +190,6 @@ public class AddActivity extends AppCompatActivity{
         });
     }
 
-
     private void changeState(){
         if(currState == 0){
             int validationCode = validateInput();
@@ -183,13 +198,44 @@ public class AddActivity extends AppCompatActivity{
                 state0.setVisibility(View.GONE);
                 LinearLayout state1 = findViewById(R.id.stateTwoLayout);
                 state1.setVisibility(View.VISIBLE);
+                nextButtton.setEnabled(false);
                 this.currState += 1;
             }
         } else if(currState == 1){
             Log.d("DB", "CALLING UPLOAD");
-            RequestHandler handler = new RequestHandler(this.inputStream, inputArray);
+            progressBar.setMax(100);
+            nextButtton.setVisibility(View.GONE);
+            hl = new Handler();
+            CopyStreamAdapter streamListener = new CopyStreamAdapter() {
+
+                @Override
+                public void bytesTransferred(long totalBytesTransferred, int bytesTransferred, long streamSize) {
+                    //this method will be called every time some bytes are transferred
+                    final int percent = (int)(totalBytesTransferred*100/transferSize);
+
+                    hl.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Log.d("PRG", "Progress: " + percent);
+                            progressBar.setProgress(percent);
+                            if(percent == 100){
+                                TextView t = findViewById(R.id.finalWaitMsg);
+                                t.setText("Articulo Agregado!");
+                            }
+                        }
+                    });
+                }
+
+            };
+
+            RequestHandler handler = new RequestHandler(this.inputStream, streamListener, inputArray);
             Thread t1 = new Thread(handler);
             t1.start();
+
+            LinearLayout state2 = findViewById(R.id.stateTwoLayout);
+            state2.setVisibility(View.GONE);
+            LinearLayout state3 = findViewById(R.id.stateThreeLayout);
+            state3.setVisibility(View.VISIBLE);
         }
     }
 
@@ -224,9 +270,6 @@ public class AddActivity extends AppCompatActivity{
         return 0;
     }
 
-
-
-
     //State Two Methods
 
     private void chooseImage(View view){
@@ -254,8 +297,15 @@ public class AddActivity extends AppCompatActivity{
 
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
-            byte[] bitemap = bos.toByteArray();
-            inputStream = new ByteArrayInputStream(bitemap);
+
+            progressBar.setMax(bos.size()/1024);
+            this.transferSize = bos.size();
+
+            byte[] bytemap = bos.toByteArray();
+
+            inputStream = new ByteArrayInputStream(bytemap);
+
+            nextButtton.setEnabled(true);
         }
     }
 
@@ -266,6 +316,11 @@ public class AddActivity extends AppCompatActivity{
                     new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
                     205);
         }
+    }
+
+    private void returnHome(){
+        Intent i = new Intent(getApplicationContext(), MainActivity.class);
+        startActivity(i);
     }
 
 }
